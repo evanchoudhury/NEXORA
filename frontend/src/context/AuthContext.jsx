@@ -12,10 +12,19 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // 1. Check InsForge Auth session / OAuth callback
+        // 1. Process any incoming OAuth callback (e.g. from Google redirect)
+        if (typeof window !== 'undefined') {
+          try {
+            await insforge.auth.detectAuthCallback();
+          } catch (callbackErr) {
+            console.warn('OAuth callback exchange notice:', callbackErr.message);
+          }
+        }
+
+        // 2. Check InsForge Auth session
         const { data: authData } = await insforge.auth.getCurrentUser();
         if (authData?.user) {
-          // If token in localStorage or from InsForge session
+          // Sync token if available
           const token = localStorage.getItem('nexora_token');
           if (token) {
             try {
@@ -38,7 +47,7 @@ export const AuthProvider = ({ children }) => {
           return;
         }
 
-        // 2. Fallback to existing token in localStorage
+        // 3. Fallback to existing token in localStorage
         const localToken = localStorage.getItem('nexora_token');
         if (localToken) {
           const res = await api.getMe();
@@ -140,20 +149,62 @@ export const AuthProvider = ({ children }) => {
     return authData;
   };
 
-  // 3. Sign in with Google OAuth via InsForge Auth
+  // 3. Sign in with Google OAuth via InsForge Auth (with direct PKCE fallback)
   const loginWithGoogle = async () => {
-    const { data, error } = await insforge.auth.signInWithOAuth('google', {
-      redirectTo: `${window.location.origin}/login`
-    });
+    // Attempt 1: Standard SDK signInWithOAuth
+    try {
+      const { data, error } = await insforge.auth.signInWithOAuth('google', {
+        redirectTo: `${window.location.origin}/login`,
+        skipBrowserRedirect: true
+      });
 
-    if (error) {
-      throw error;
+      if (!error && data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      if (error) {
+        console.warn('SDK OAuth initialization note:', error.message);
+      }
+    } catch (sdkErr) {
+      console.warn('SDK signInWithOAuth error, using direct PKCE fallback:', sdkErr.message);
     }
 
-    // If skipBrowserRedirect was false, SDK redirects automatically.
-    // If a URL was returned:
-    if (data?.url) {
-      window.location.href = data.url;
+    // Attempt 2: Direct PKCE Fallback for complete browser resilience
+    try {
+      const randomValues = new Uint8Array(32);
+      window.crypto.getRandomValues(randomValues);
+      const codeVerifier = btoa(String.fromCharCode(...randomValues))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      // Store in sessionStorage where @insforge/sdk looks for it upon callback
+      sessionStorage.setItem('insforge_pkce_verifier', codeVerifier);
+
+      // Generate SHA-256 code challenge
+      const encoder = new TextEncoder();
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier));
+      const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      const endpoint = `https://hmk4mg6q.us-east.insforge.app/api/auth/oauth/google?redirect_uri=${encodeURIComponent(
+        `${window.location.origin}/login`
+      )}&code_challenge=${codeChallenge}`;
+
+      const res = await fetch(endpoint, {
+        headers: { apikey: 'ik_eb094b8e2354c46ba863e4aaefbc5bf4' }
+      });
+      const result = await res.json();
+      if (result.authUrl) {
+        window.location.href = result.authUrl;
+        return;
+      }
+      throw new Error(result.message || 'Google OAuth failed to return authorization URL');
+    } catch (err) {
+      console.error('All Google OAuth initiation attempts failed:', err);
+      throw err;
     }
   };
 
