@@ -22,9 +22,9 @@ jobs:
         run: cd backend && npm ci
       - name: Run Backend Integration Tests
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          INSFORGE_URL: ${{ secrets.INSFORGE_URL }}
-          INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:1e76d1d5187dad60ae2a14d5d428378d@hmk4mg6q.us-east.database.insforge.app:5432/insforge?sslmode=require' }}
+          INSFORGE_URL: ${{ secrets.INSFORGE_URL || 'https://hmk4mg6q.us-east.insforge.app' }}
+          INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY || 'anon_260bdbe9ce12b3ee77a33fd461d67770ac5a9f5e0473fedc2d8d3f08e548f73b' }}
           JWT_SECRET: test_jwt_secret_key_123456
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_testing' }}
         run: cd backend && npm test
@@ -42,7 +42,7 @@ jobs:
         run: cd mcp-server && npm ci
       - name: Run MCP Tool Tests
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:1e76d1d5187dad60ae2a14d5d428378d@hmk4mg6q.us-east.database.insforge.app:5432/insforge?sslmode=require' }}
         run: cd mcp-server && npm test
 
   frontend-build:

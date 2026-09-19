@@ -17,9 +17,11 @@ const getInsforgeClient = async () => {
   return insforgeClient;
 };
 
+const DEFAULT_DATABASE_URL = 'postgresql://postgres:1e76d1d5187dad60ae2a14d5d428378d@hmk4mg6q.us-east.database.insforge.app:5432/insforge?sslmode=require';
+
 // High-performance PostgreSQL connection pool for ACID transactions & complex joins
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || DEFAULT_DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   },

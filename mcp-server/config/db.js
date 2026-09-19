@@ -1,8 +1,10 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+const DEFAULT_DATABASE_URL = 'postgresql://postgres:1e76d1d5187dad60ae2a14d5d428378d@hmk4mg6q.us-east.database.insforge.app:5432/insforge?sslmode=require';
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || DEFAULT_DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
