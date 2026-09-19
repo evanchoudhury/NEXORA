@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # NEXORA Express Backend & EJS Engine
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexora-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - INSFORGE_URL=${INSFORGE_URL:-https://hmk4mg6q.us-east.insforge.app}
+      - INSFORGE_ANON_KEY=${INSFORGE_ANON_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET:-nexora_super_secure_jwt_secret_key_2026}
+      - BLOCKCHAIN_RPC_URL=${BLOCKCHAIN_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
+      - CLIENT_URL=http://localhost:5173
+    networks:
+      - nexora-net
+
+  # NEXORA Vite React Frontend (Development Service)
+  frontend:
+    image: node:20-alpine
+    container_name: nexora-frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://backend:5000/api
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+    networks:
+      - nexora-net
+
+  # NEXORA Model Context Protocol (MCP) Server
+  mcp-server:
+    image: node:20-alpine
+    container_name: nexora-mcp
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./mcp-server:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    command: sh -c "npm install && node server.js"
+    networks:
+      - nexora-net
+
+networks:
+  nexora-net:
+    driver: bridge

@@ -1,0 +1,59 @@
+name: NEXORA CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-tests:
+    name: Backend Tests & InsForge Integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+      - name: Install Backend Dependencies
+        run: cd backend && npm ci
+      - name: Run Backend Integration Tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          INSFORGE_URL: ${{ secrets.INSFORGE_URL }}
+          INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY }}
+          JWT_SECRET: test_jwt_secret_key_123456
+        run: cd backend && npm test
+
+  mcp-tests:
+    name: MCP Server Tool Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install MCP Dependencies
+        run: cd mcp-server && npm ci
+      - name: Run MCP Tool Tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: cd mcp-server && npm test
+
+  frontend-build:
+    name: Frontend React Build & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Frontend Dependencies
+        run: cd frontend && npm ci
+      - name: Build Frontend Assets
+        run: cd frontend && npm run build
