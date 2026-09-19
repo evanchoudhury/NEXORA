@@ -21,7 +21,7 @@ const blockchainRoutes = require('./routes/blockchainRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
 const Stripe = require('stripe');
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -75,6 +75,16 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.post('/api/create-checkout-session', async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'STRIPE_NOT_CONFIGURED',
+        message: 'Stripe payments are not configured on this environment.'
+      }
+    });
+  }
+
   // TODO: Set mode to "subscription" if selling recurring products.
   const mode = 'payment';
 

@@ -26,6 +26,7 @@ jobs:
           INSFORGE_URL: ${{ secrets.INSFORGE_URL }}
           INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY }}
           JWT_SECRET: test_jwt_secret_key_123456
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY || 'sk_test_placeholder_key_for_testing' }}
         run: cd backend && npm test
 
   mcp-tests:
